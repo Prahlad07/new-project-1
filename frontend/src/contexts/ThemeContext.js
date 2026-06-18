@@ -7,8 +7,7 @@ const STORAGE_KEY = 'cm_grievance_theme';
 function getInitialTheme() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
-  // Default is light per product requirement, but respect explicit system dark preference only if no stored choice
-  return 'light';
+  return 'dark';
 }
 
 export const ThemeProvider = ({ children }) => {
