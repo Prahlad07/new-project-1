@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
+import { USE_MOCK } from '../services/api';
 
 const SocketContext = createContext();
 
@@ -18,6 +19,65 @@ export const SocketProvider = ({ children }) => {
       socketRef.current = null;
       setSocket(null);
       return;
+    }
+
+    if (USE_MOCK) {
+      const mockSocket = {
+        on: (event, cb) => {
+          if (!mockSocket.listeners[event]) mockSocket.listeners[event] = [];
+          mockSocket.listeners[event].push(cb);
+        },
+        emit: (event, data) => {
+          mockSocket.listeners[event]?.forEach(cb => cb(data));
+        },
+        disconnect: () => {
+          clearInterval(mockSocket.intervalId);
+        },
+        listeners: {}
+      };
+
+      // Emit simulated real-time alerts periodically to show off reactive UI toasts
+      mockSocket.intervalId = setInterval(() => {
+        const rand = Math.random();
+        if (rand < 0.4) {
+          const alertData = {
+            type: 'critical_complaint',
+            title: 'Critical Escalation Alert',
+            message: 'Sewage overflow near Karol Bagh market flagged as critical hazard.',
+            createdAt: new Date().toISOString()
+          };
+          mockSocket.emit('notification', alertData);
+        } else if (rand < 0.7) {
+          const alertData = {
+            type: 'new_assignment',
+            title: 'New Automated Task Assignment',
+            message: 'Defunct high-mast streetlight ticket in Saket auto-assigned to you.',
+            createdAt: new Date().toISOString()
+          };
+          mockSocket.emit('notification', alertData);
+        }
+      }, 50000);
+
+      socketRef.current = mockSocket;
+      setSocket(mockSocket);
+
+      mockSocket.on('notification', (data) => {
+        setUnreadCount((c) => c + 1);
+        if (data.type === 'critical_complaint') {
+          toast.error(`🚨 ${data.title}: ${data.message}`, { duration: 8000 });
+          setCriticalAlerts((prev) => [data, ...prev.slice(0, 9)]);
+        } else if (data.type === 'false_closure_alert') {
+          toast.error(`⚠️ ${data.title}`, { duration: 6000 });
+        } else if (data.type === 'verification_required') {
+          toast(`✅ ${data.title}`, { duration: 8000 });
+        } else if (data.type === 'new_assignment') {
+          toast.success(`📋 ${data.title}`);
+        } else {
+          toast(data.title);
+        }
+      });
+
+      return () => { mockSocket.disconnect(); };
     }
 
     const token = localStorage.getItem('token');
